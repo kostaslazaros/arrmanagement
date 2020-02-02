@@ -1,3 +1,5 @@
+//The start of the final project is here
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
