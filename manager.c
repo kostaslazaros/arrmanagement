@@ -1,110 +1,167 @@
-//The start of the final project is here
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
+#include <time.h>
 #include <unistd.h>
-#include <sys/types.h>
 #include <sys/ipc.h>
-#include <sys/sem.h>
+#include <sys/shm.h>
+#include <sys/wait.h>
 
-int makearr(int row, int col)
+
+// Creating a 2d array
+int** create2dArray(int rows, int columns)
 {
-    int *arr = (int *)malloc(row * col * sizeof(int));
-    int i, j;
-    for (i = 0; i < row; i++)
-        for (j = 0; j < col; j++)
-            *(arr + i * col + j) = random() % 100;
-    printf("The matrix is:\n");
-    for (i = 0; i < row; i++)
+    printf("Allocating memory for %i rows and %i columns\n", rows, columns);
+    int** aa;
+    aa = malloc(rows * sizeof(*aa));
+    for (int i=0; i<rows; i++)
     {
-        for (j = 0; j < col; j++)
-        {
-            printf("%d ", *(arr + i * col + j));
-        }
-        printf("\n");
+        aa[i] = malloc(columns*sizeof(aa[0]));
+    }
+    return aa;
+}
+
+// Freeing the memory used for the allocation of the array
+int free2dArray(int** arr, int rows)
+{
+      for (int i = 0; i < rows; i++)
+    {
+        free(arr[i]);
     }
     free(arr);
+    printf("memory is free now\n");
     return 0;
 }
 
-int sem;
-int sem_id = 1;
-key_t key;
 
-key = ftok("/virtualpathtosemaphore", 1);
-// create a new semaphore
-sem = semget(key, 1, IPC_CREAT);
-// use sem = semget(key, 1, 0); to attach to an existing semaphore
-// flags also contain access rights, to take care to set them appropriately
-
-// increment semaphore
-struct sembuf semopinc = {
-    .sem_num = 0,
-    .sem_op = 1,
-    .sem_flg = 0};
-semop(sem, &semopinc, 1);
-
-/* decrement semaphore, may block */
-struct sembuf semopdec = {
-    .sem_num = 0,
-    .sem_op = -1,
-    .sem_flg = 0};
-semop(sem, &semopdec, 1);
-
-// sem_t mutex;
-// void *thread(void *arg)
-// {                     //function which act like thread
-//     sem_wait(&mutex); //wait state
-//     printf("\nEntered into the Critical Section..\n");
-//     sleep(3);                   //critical section
-//     printf("\nCompleted...\n"); //comming out from Critical section
-//     sem_post(&mutex);
-// }
-
-//initializing shared memory safely
-struct head
+void fill2dArrayWithRandomIntegers(int** arr, int rows, int columns)
 {
-    unsigned volatile flag;
-    pthread_mutex_t mut;
-};
 
-void *addr = 0;
-/* try shm_open with exclusive, and then */
-if (/* we create the segment */)
-{
-    addr = mmap(something);
-    struct head *h = addr;
-    pthread_mutex_init(&h->mut, aSharedAttr);
-    pthread_mutex_lock(&h->mut);
-    h->flag = 1;
-    /* do the rest of the initialization, and then */
-    pthread_mutex_unlock(&h->mut);
+    srand(time(NULL));
+
+    for (int i=0; i < rows;i++){
+
+        for (int j=0; j < columns; j++){
+
+            arr[i][j] = rand() % 100;
+
+
+        }
+    }
 }
-else
-{
-    /* retry shm_open without exclusive, and then */
-    addr = mmap(something);
-    struct head *h = addr;
-    /* initialy flag is guaranteed to be 0 */
-    /* this will break out of the loop whence the new value is written to flag */
-    while (!h->flag)
-        sched_yield();
-    pthread_mutex_lock(&h->mut);
-    pthread_mutex_unlock(&h->mut);
+
+
+void print2dArray(int** arr, int rows, int columns){
+
+    printf("Printing array of %i rows and %i columns\n", rows, columns);
+
+    for (int i=0; i<rows;i++){
+
+        for (int j=0; j < columns; j++){
+
+            printf("%i,", arr[i][j]);
+        }
+
+        printf("\n");
+    }
 }
+
+
+//Finds the sum for each row
+void sumAll(int** arr, int* total, int rows, int columns){
+
+    for (int i=0; i<rows;i++){
+
+        total[i] = 0;
+
+        for (int j=0; j<columns; j++){
+
+            total[i] += arr[i][j];
+
+        }
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
-    makearray(4, 5);
-    // sem_init(&mutex, 0, 1);
-    // pthread_t th1, th2;
-    // pthread_create(&th1, NULL, thread, NULL);
-    // sleep(2);
-    // pthread_create(&th2, NULL, thread, NULL);
-    // //Join threads with the main thread
-    // pthread_join(th1, NULL);
-    // pthread_join(th2, NULL);
-    // sem_destroy(&mutex);
+    int rows, columns, i, j;
+    int grandTotal = 0;
+
+    rows = 10;
+    columns = 4;
+
+    if (argc == 1){
+
+        printf("Δώσε διαστάσεις (Γραμμές, στήλες)\n");
+        scanf ("%d %d", &rows, &columns);
+
+
+    } else if (argc == 2){
+
+        rows = strtol(argv[1], NULL, 10);
+
+
+    } else if (argc == 3){
+
+        rows = strtol(argv[1], NULL, 10);
+        columns = strtol(argv[2], NULL, 10);
+
+
+    }
+
+    int** arr = create2dArray(rows, columns);
+    // int* totals = malloc(rows*sizeof(int));
+
+    fill2dArrayWithRandomIntegers(arr, rows, columns);
+
+    // ftok to generate unique key
+    key_t key = ftok("shmfile",65);
+    int shm = shmget (key, rows * sizeof (int), IPC_CREAT | 0666);
+
+    if (shm < 0)
+    {
+        perror ("shmget");
+        return 1;
+    }
+     /* Attach the segment as an int array */
+    int *row = shmat (shm, NULL, 0);
+    if (row < (int *) NULL)
+    {
+        perror ("shmat");
+        return 1;
+    }
+
+    for (i = 0; i < rows; ++i)
+    /* Create h children and make them work */
+    if (!fork ())
+    {
+        for (j = 0; j < columns; ++j)
+            row[i] += arr[i][j];
+        return 0;
+    }
+
+    for (i = 0; i < rows; ++i)
+        wait (&j);
+
+
+    print2dArray(arr, rows, columns);
+
+    //sumAll(arr, totals, rows, columns);
+
+    // Printing of row sums and general sum of all sums
+    for (int k=0; k<rows; k++){
+        grandTotal += row[k];
+        printf("row %i total is: %i\n", k, row[k]);
+    }
+
+    printf("Total row sum : %i\n", grandTotal);
+
+    /* Detach the shared memory segment and delete its key for later reuse */
+    shmdt (row);
+    shmctl (shm, IPC_RMID, NULL);
+    // Ελευθέρωση μνήμης
+    free2dArray(arr, rows);
+    // free(totals);
+
     return 0;
 }
