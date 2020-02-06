@@ -13,12 +13,13 @@ int** create2dArray(int rows, int columns)
     printf("Allocating memory for %i rows and %i columns\n", rows, columns);
     int** aa;
     aa = malloc(rows * sizeof(*aa));
-    for (int i=0; i<rows; i++)
+    for (int i = 0; i < rows; i++)
     {
         aa[i] = malloc(columns*sizeof(aa[0]));
     }
     return aa;
 }
+
 
 // Freeing the memory used for the allocation of the array
 int free2dArray(int** arr, int rows)
@@ -35,28 +36,26 @@ int free2dArray(int** arr, int rows)
 
 void fill2dArrayWithRandomIntegers(int** arr, int rows, int columns)
 {
-
     srand(time(NULL));
 
-    for (int i=0; i < rows;i++){
+    for (int i = 0; i < rows;i++){
+        for (int j = 0; j < columns; j++){
 
-        for (int j=0; j < columns; j++){
-
+            // We can use larger numbers if we want to. Just change 100 into a bigger or smaller number
             arr[i][j] = rand() % 100;
-
-
         }
     }
 }
 
 
-void print2dArray(int** arr, int rows, int columns){
+void print2dArray(int** arr, int rows, int columns)
+{
 
     printf("Printing array of %i rows and %i columns\n", rows, columns);
 
-    for (int i=0; i<rows;i++){
+    for (int i = 0; i < rows;i++){
 
-        for (int j=0; j < columns; j++){
+        for (int j = 0; j < columns; j++){
 
             printf("%i,", arr[i][j]);
         }
@@ -66,14 +65,15 @@ void print2dArray(int** arr, int rows, int columns){
 }
 
 
-//Finds the sum for each row
-void sumAll(int** arr, int* total, int rows, int columns){
+// Finds the sum for each row
+void sumAll(int** arr, int* total, int rows, int columns)
+{
 
-    for (int i=0; i<rows;i++){
+    for (int i = 0; i < rows; i++){
 
         total[i] = 0;
 
-        for (int j=0; j<columns; j++){
+        for (int j = 0; j < columns; j++){
 
             total[i] += arr[i][j];
 
@@ -90,12 +90,12 @@ int main(int argc, char *argv[])
     rows = 10;
     columns = 4;
 
-    if (argc == 1){
+    if(argc == 1){
 
-        printf("Δώσε διαστάσεις (Γραμμές, στήλες)\n");
-        scanf ("%d %d", &rows, &columns);
+        printf("Enter array dimensions (Rows, collumns)\n");
+        scanf("%d %d", &rows, &columns);
 
-
+//Passing in n and m as arguments
     } else if (argc == 2){
 
         rows = strtol(argv[1], NULL, 10);
@@ -109,6 +109,7 @@ int main(int argc, char *argv[])
 
     }
 
+// Creating the 2d array with dynamic memory allocation
     int** arr = create2dArray(rows, columns);
     // int* totals = malloc(rows*sizeof(int));
 
@@ -116,32 +117,32 @@ int main(int argc, char *argv[])
 
     // ftok to generate unique key
     key_t key = ftok("shmfile",65);
-    int shm = shmget (key, rows * sizeof (int), IPC_CREAT | 0666);
+    int shm = shmget(key, rows * sizeof (int), IPC_CREAT | 0666);
 
     if (shm < 0)
     {
-        perror ("shmget");
+        perror("shmget");
         return 1;
     }
-     /* Attach the segment as an int array */
-    int *row = shmat (shm, NULL, 0);
+     // Attach the segment as an int array
+    int *row = shmat(shm, NULL, 0);
     if (row < (int *) NULL)
     {
-        perror ("shmat");
+        perror("shmat");
         return 1;
     }
 
     for (i = 0; i < rows; ++i)
-    /* Create h children and make them work */
-    if (!fork ())
-    {
-        for (j = 0; j < columns; ++j)
-            row[i] += arr[i][j];
-        return 0;
-    }
+        // Create as many children processes as the rows are
+        if (!fork())
+        {
+            for (j = 0; j < columns; ++j)
+                row[i] += arr[i][j];
+            return 0;
+        }
 
-    for (i = 0; i < rows; ++i)
-        wait (&j);
+    for(i = 0; i < rows; ++i)
+        wait(&j);
 
 
     print2dArray(arr, rows, columns);
@@ -149,19 +150,18 @@ int main(int argc, char *argv[])
     //sumAll(arr, totals, rows, columns);
 
     // Printing of row sums and general sum of all sums
-    for (int k=0; k<rows; k++){
+    for (int k = 0; k < rows; k++){
         grandTotal += row[k];
         printf("row %i total is: %i\n", k, row[k]);
     }
 
     printf("Total row sum : %i\n", grandTotal);
 
-    /* Detach the shared memory segment and delete its key for later reuse */
-    shmdt (row);
-    shmctl (shm, IPC_RMID, NULL);
-    // Ελευθέρωση μνήμης
+    // Detach the shared memory segment and delete its key for later reuse
+    shmdt(row);
+    shmctl(shm, IPC_RMID, NULL);
+    // Freeing memory
     free2dArray(arr, rows);
     // free(totals);
-
     return 0;
 }
