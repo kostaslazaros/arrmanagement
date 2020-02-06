@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
         printf("Enter array dimensions (Rows, collumns)\n");
         scanf("%d %d", &rows, &columns);
 
-//Passing in n and m as arguments
+// Passing in n and m as arguments
     } else if (argc == 2){
 
         rows = strtol(argv[1], NULL, 10);
